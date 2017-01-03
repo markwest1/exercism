@@ -30,13 +30,12 @@ func FromRNA(rna string) (chain []string) {
 	}
 
 	for i := 3; i <= len(rna); i += 3 {
-		if protein, ok := Proteins[rna[i-3:i]]; ok {
-			if protein == "STOP" || protein == "" {
-				return
-			}
-
-			chain = append(chain, protein)
+		protein := FromCodon(rna[i-3 : i])
+		if protein == "STOP" || protein == "" {
+			return
 		}
+
+		chain = append(chain, protein)
 	}
 
 	return
