@@ -3,15 +3,24 @@ package protein
 const testVersion = 1
 
 // Proteins maps proteins to codons
-var Proteins = map[string][]string{
-	"Methionine":    []string{"AUG"},
-	"Phenylalanine": []string{"UUU", "UUC"},
-	"Leucine":       []string{"UUA", "UUG"},
-	"Serine":        []string{"UCU", "UCC", "UCA", "UCG"},
-	"Tyrosine":      []string{"UAU", "UAC"},
-	"Cysteine":      []string{"UGU", "UGC"},
-	"Tryptophan":    []string{"UGG"},
-	"STOP":          []string{"UAA", "UAG", "UGA"},
+var Proteins = map[string]string{
+	"AUG": "Methionine",
+	"UUU": "Phenylalanine",
+	"UUC": "Phenylalanine",
+	"UUA": "Leucine",
+	"UUG": "Leucine",
+	"UCU": "Serine",
+	"UCC": "Serine",
+	"UCA": "Serine",
+	"UCG": "Serine",
+	"UAU": "Tyrosine",
+	"UAC": "Tyrosine",
+	"UGU": "Cysteine",
+	"UGC": "Cysteine",
+	"UGG": "Tryptophan",
+	"UAA": "STOP",
+	"UAG": "STOP",
+	"UGA": "STOP",
 }
 
 // FromRNA translates an RNA sequence into a polypeptide protein sequence.
@@ -21,11 +30,13 @@ func FromRNA(rna string) (chain []string) {
 	}
 
 	for i := 3; i <= len(rna); i += 3 {
-		protein := FromCodon(rna[i-3 : i])
-		if protein == "STOP" || protein == "" {
-			return
+		if protein, ok := Proteins[rna[i-3:i]]; ok {
+			if protein == "STOP" || protein == "" {
+				return
+			}
+
+			chain = append(chain, protein)
 		}
-		chain = append(chain, protein)
 	}
 
 	return
@@ -33,12 +44,8 @@ func FromRNA(rna string) (chain []string) {
 
 // FromCodon translates a codon to a protein.
 func FromCodon(codon string) string {
-	for protein, codons := range Proteins {
-		for _, c := range codons {
-			if c == codon {
-				return protein
-			}
-		}
+	if protein, ok := Proteins[codon]; ok {
+		return protein
 	}
 
 	return ""
