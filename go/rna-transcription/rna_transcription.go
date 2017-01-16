@@ -4,12 +4,7 @@ import "bytes"
 
 const testVersion = 3
 
-var complements = map[rune]rune{
-	rune('G'): rune('C'),
-	rune('C'): rune('G'),
-	rune('T'): rune('A'),
-	rune('A'): rune('U'),
-}
+var complements = map[rune]rune{'G': 'C', 'C': 'G', 'T': 'A', 'A': 'U'}
 
 // ToRNA returns the RNA complement for a given DNA strand.
 func ToRNA(strand string) string {
