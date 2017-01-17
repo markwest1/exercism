@@ -34,8 +34,9 @@ func (b *Buffer) ReadByte() (c byte, e error) {
 	}
 
 	c = b.data[b.oldest]
-	b.empty = b.oldest == b.latest
+	b.full = false
 	b.oldest = (b.oldest + 1) % b.size
+	b.empty = b.oldest == b.latest
 
 	return
 }
@@ -50,13 +51,8 @@ func (b *Buffer) WriteByte(c byte) (e error) {
 
 	b.data[b.latest] = c
 	b.empty = false
-
-	nextLatest := ((b.latest + 1) % b.size)
-	b.full = nextLatest == b.oldest
-
-	if !b.full {
-		b.latest = nextLatest
-	}
+	b.latest = (b.latest + 1) % b.size
+	b.full = b.latest == b.oldest
 
 	return
 }
