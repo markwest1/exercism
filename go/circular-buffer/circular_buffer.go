@@ -1,45 +1,83 @@
 package circular
 
-// Implement a circular buffer of bytes supporting both overflow-checked writes
-// and unconditional, possibly overwriting, writes.
-//
-//   type Buffer
-//   func NewBuffer(size int) *Buffer
-//   func (*Buffer) ReadByte() (byte, error)
-//   func (*Buffer) WriteByte(c byte) error
-//   func (*Buffer) Overwrite(c byte)
-//   func (*Buffer) Reset() // put buffer in an empty state
-//
-// We chose the above API so that Buffer implements io.ByteReader
-// and io.ByteWriter and can be used (size permitting) as a drop in
-// replacement for anything using that interface.
+import "fmt"
+
+const testVersion = 4
 
 // Buffer is a circular buffer supporting both overflow-checked writes and
-// unconditional, possibly overwriting, writes.
-type Buffer []int
-
-// NewBuffer creates a new buffer.
-func NewBuffer(size int) *Buffer {
-	b := make(Buffer, size)
-	return &b
+// unconditional, possibly overwriting writes.
+type Buffer struct {
+	data   []byte
+	size   int
+	oldest int
+	latest int
+	empty  bool
+	full   bool
 }
 
-// ReadByte ...
+// NewBuffer creates a new buffer with size s.
+func NewBuffer(s int) *Buffer {
+	if s <= 0 {
+		fmt.Printf("buffer size must be positive")
+		return nil
+	}
+
+	return &Buffer{make([]byte, s), s, 0, 0, true, false}
+}
+
+// ReadByte returns the byte at index oldest and increments oldest. Returns an
+// error if the buffer is empty.
 func (b *Buffer) ReadByte() (c byte, e error) {
+	if b.empty {
+		e = fmt.Errorf("can't read from empty buffer")
+		return
+	}
+
+	c = b.data[b.oldest]
+	b.empty = b.oldest == b.latest
+	b.oldest = (b.oldest + 1) % b.size
+
 	return
 }
 
-// WriteByte ...
+// WriteByte saves byte c at index latest and increments latest. Returns an
+// error if the buffer is full.
 func (b *Buffer) WriteByte(c byte) (e error) {
+	if b.full {
+		e = fmt.Errorf("can't write to full buffer")
+		return
+	}
+
+	b.data[b.latest] = c
+	b.empty = false
+
+	nextLatest := ((b.latest + 1) % b.size)
+	b.full = nextLatest == b.oldest
+
+	if !b.full {
+		b.latest = nextLatest
+	}
+
 	return
 }
 
-// Overwrite ...
+// Overwrite writes byte c at index oldest and increments both oldest and latest
+// if the buffer is full. If the buffer is not full, WriteByte(c) is called.
 func (b *Buffer) Overwrite(c byte) {
+	if b.full {
+		b.data[b.oldest] = c
+		b.latest = (b.latest + 1) % b.size
+		b.oldest = (b.oldest + 1) % b.size
+	} else {
+		b.WriteByte(c)
+	}
+
 	return
 }
 
-// Reset ...
+// Reset resets the state of circular buffer to empty.
 func (b *Buffer) Reset() {
-	return
+	b.oldest = b.latest
+	b.empty = true
+	b.full = false
 }
