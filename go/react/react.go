@@ -2,75 +2,90 @@ package react
 
 const testVersion = 4
 
-// Manager manages linked cells.
-type Manager struct {
-	inputs []InputNode
-}
-
-// Node is the basic element of a reactive system.
-type Node struct {
+// Base implements the Cell interface
+type Base struct {
 	value int
 }
 
-// InputNode has a changeable value, chaning the value triggers updates to
-// other cells.
-type InputNode struct {
-	Node
+// Value returns the value of b
+func (b *Base) Value() int {
+	return b.value
 }
 
-// ComputeNode always computes its value based on other cells and can
-// call callbacks upon changes.
-type ComputeNode struct {
-	Node
+// Input implements the InputCell interface
+type Input struct {
+	value    int
+	callback func(int) int
 }
 
-// New creates a new Reactor.
-func New() Reactor {
-	return Manager{}
+// Value returns the value of i
+func (i *Input) Value() int {
+	return i.value
 }
 
-// CreateInput creates an input cell linked into the reactor
-// with the given initial value.
-func (m Manager) CreateInput(n int) InputCell {
-	if m.inputs == nil {
-		m.inputs = make([]InputNode, 0)
+// SetValue sets the value of the i
+func (i *Input) SetValue(v int) {
+	if v != i.value {
+		i.value = v
+		if i.callback != nil {
+			i.callback(v)
+		}
+	}
+}
+
+// Compute implements the ComputeCell interface
+type Compute struct {
+	c1        Input
+	c2        Input
+	compute1  func(int) int
+	compute2  func(int, int) int
+	callbacks []func(int)
+}
+
+// Value returns the value of ComputeCell
+func (c *Compute) Value() int {
+	if c.compute1 != nil {
+		c.compute1(c.c1.Value())
+	} else if c.compute2 != nil {
+		c.compute2(c.c1.Value(), c.c2.Value())
 	}
 
-	input := InputNode{Node{n}}
-	m.inputs = append(m.inputs, input)
-	return input
+	return 0
 }
 
-// CreateCompute1 creates a compute cell which computes its value
-// based on one other cell. The compute function will only be called
-// if the value of the passed cell changes.
-func (m Manager) CreateCompute1(c Cell, compute func(int) int) ComputeCell {
-	return nil
+// AddCallback adds a callback to a compute cell
+func (c *Compute) AddCallback(cb func(int)) CallbackHandle {
+	if c.callbacks == nil {
+		c.callbacks = make([]func(int), 0)
+	}
+
+	c.callbacks = append(c.callbacks, cb)
+
+	return len(c.callbacks) - 1
 }
 
-// CreateCompute2 is like CreateCompute1, but depending on two cells.
-// The compute function will only be called if the value of any of the
-// passed cells changes.
-func (m Manager) CreateCompute2(c1 Cell, c2 Cell, compute func(int, int) int) ComputeCell {
-	return nil
+// RemoveCallback removes a callback from a compute cell
+func (c *Compute) RemoveCallback(cbh CallbackHandle) {
+	if i, ok := cbh.(int); ok {
+		c.callbacks = append(c.callbacks[:i], c.callbacks[i+1:]...)
+	}
 }
 
-// Value returns the current value of the cell
-func (n Node) Value() int {
-	return n.value
+// React implements the Reactor interface
+type React struct {
 }
 
-// SetValue sets the value of the cell
-func (i InputNode) SetValue(v int) {
-	i.value = v
+// CreateInput creates an input cell
+func (r *React) CreateInput(v int) InputCell {
+	return &Input{v, nil}
 }
 
-// AddCallback adds a callback which will be called when the value changes.
-// It returns a callback handle which can be used to remove the callback.
-func (c *ComputeNode) AddCallback(func(int)) CallbackHandle {
-	return nil
+// CreateCompute1 creates a compute cell which computes its value ...
+func (r *React) CreateCompute1(c Cell, f func(int) int) ComputeCell {
+	return Compute{c1: c, compute1: f}
 }
 
-// RemoveCallback removes a previously added callback, if it exists.
-func (c *ComputeNode) RemoveCallback(CallbackHandle) {
+// New creates a new reactor
+func New() *React {
+	return &React{}
 }
