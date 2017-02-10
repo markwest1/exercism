@@ -2,16 +2,6 @@ package react
 
 const testVersion = 4
 
-// Base implements the Cell interface
-type Base struct {
-	value int
-}
-
-// Value returns the value of b
-func (b *Base) Value() int {
-	return b.value
-}
-
 // Input implements the InputCell interface
 type Input struct {
 	value    int
@@ -23,7 +13,7 @@ func (i *Input) Value() int {
 	return i.value
 }
 
-// SetValue sets the value of the i
+// SetValue sets the value of i
 func (i *Input) SetValue(v int) {
 	if v != i.value {
 		i.value = v
@@ -35,8 +25,8 @@ func (i *Input) SetValue(v int) {
 
 // Compute implements the ComputeCell interface
 type Compute struct {
-	c1        Input
-	c2        Input
+	i1        *Input
+	i2        *Input
 	compute1  func(int) int
 	compute2  func(int, int) int
 	callbacks []func(int)
@@ -45,9 +35,9 @@ type Compute struct {
 // Value returns the value of ComputeCell
 func (c *Compute) Value() int {
 	if c.compute1 != nil {
-		c.compute1(c.c1.Value())
+		return c.compute1(c.i1.Value())
 	} else if c.compute2 != nil {
-		c.compute2(c.c1.Value(), c.c2.Value())
+		return c.compute2(c.i1.Value(), c.i2.Value())
 	}
 
 	return 0
@@ -82,7 +72,39 @@ func (r *React) CreateInput(v int) InputCell {
 
 // CreateCompute1 creates a compute cell which computes its value ...
 func (r *React) CreateCompute1(c Cell, f func(int) int) ComputeCell {
-	return Compute{c1: c, compute1: f}
+	in, ok := c.(*Input)
+	if !ok {
+		in = &Input{c.Value(), nil}
+	}
+
+	return &Compute{
+		i1:        in,
+		i2:        nil,
+		compute1:  f,
+		compute2:  nil,
+		callbacks: make([]func(int), 0),
+	}
+}
+
+// CreateCompute2 creates a compute cell which computes its value ...
+func (r *React) CreateCompute2(cell1, cell2 Cell, f func(int, int) int) ComputeCell {
+	in1, ok := cell1.(*Input)
+	if !ok {
+		in1 = &Input{cell1.Value(), nil}
+	}
+
+	in2, ok := cell2.(*Input)
+	if !ok {
+		in2 = &Input{cell2.Value(), nil}
+	}
+
+	return &Compute{
+		i1:        in1,
+		i2:        in2,
+		compute1:  nil,
+		compute2:  f,
+		callbacks: make([]func(int), 0),
+	}
 }
 
 // New creates a new reactor
