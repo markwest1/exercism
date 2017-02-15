@@ -1,6 +1,10 @@
 package phonenumber
 
-import "bytes"
+import (
+	"bytes"
+	"fmt"
+	"unicode"
+)
 
 const testVersion = 1
 
@@ -11,22 +15,51 @@ const testVersion = 1
 func Number(in string) (string, error) {
 	var buf bytes.Buffer
 
-	return buf.String(), nil
+	digits := 0
+	first := 'X'
+
+	for _, r := range in {
+		if unicode.IsDigit(r) {
+			buf.WriteRune(r)
+
+			if digits == 0 {
+				first = r
+			}
+
+			digits++
+		}
+	}
+
+	if digits == 10 {
+		return buf.String(), nil
+	}
+
+	if digits == 11 && first == '1' {
+		return buf.String()[1:digits], nil
+	}
+
+	return "", fmt.Errorf("invalid input: %q", in)
 }
 
 // AreaCode returns the three-digit area code of a valid phone
 // number; if the input number is invalid, an error is returned.
 func AreaCode(in string) (string, error) {
-	var buf bytes.Buffer
+	pn, err := Number(in)
+	if err != nil {
+		return "", err
+	}
 
-	return buf.String(), nil
+	return pn[0:3], nil
 }
 
-// Format receives an un-formatted input phone number and returns
-// it as "(123) 456-7890" if it is valid; otherwise an error is
-// returned.
+// Format receives an un-formatted phone number "1234567890" and
+// returns "(123) 456-7890" if it is valid; otherwise an error
+// is returned.
 func Format(in string) (string, error) {
-	var buf bytes.Buffer
+	pn, err := Number(in)
+	if err != nil {
+		return "", err
+	}
 
-	return buf.String(), nil
+	return fmt.Sprintf("(%s) %s-%s", pn[0:3], pn[3:6], pn[6:10]), nil
 }
