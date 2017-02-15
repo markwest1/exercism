@@ -2,112 +2,105 @@ package react
 
 const testVersion = 4
 
-// Input implements the InputCell interface
-type Input struct {
-	value    int
-	callback func(int) int
-}
-
-// Value returns the value of i
-func (i *Input) Value() int {
-	return i.value
-}
-
-// SetValue sets the value of i
-func (i *Input) SetValue(v int) {
-	if v != i.value {
-		i.value = v
-		if i.callback != nil {
-			i.callback(v)
-		}
-	}
-}
-
-// Compute implements the ComputeCell interface
-type Compute struct {
-	i1        *Input
-	i2        *Input
-	compute1  func(int) int
-	compute2  func(int, int) int
-	callbacks []func(int)
-}
-
-// Value returns the value of ComputeCell
-func (c *Compute) Value() int {
-	if c.compute1 != nil {
-		return c.compute1(c.i1.Value())
-	} else if c.compute2 != nil {
-		return c.compute2(c.i1.Value(), c.i2.Value())
-	}
-
-	return 0
-}
-
-// AddCallback adds a callback to a compute cell
-func (c *Compute) AddCallback(cb func(int)) CallbackHandle {
-	if c.callbacks == nil {
-		c.callbacks = make([]func(int), 0)
-	}
-
-	c.callbacks = append(c.callbacks, cb)
-
-	return len(c.callbacks) - 1
-}
-
-// RemoveCallback removes a callback from a compute cell
-func (c *Compute) RemoveCallback(cbh CallbackHandle) {
-	if i, ok := cbh.(int); ok {
-		c.callbacks = append(c.callbacks[:i], c.callbacks[i+1:]...)
-	}
+// Node implements the Cell, InputCell and ComputeCell interfaces
+type Node struct {
+	v         int
+	c1        Cell
+	c2        Cell
+	f1        func(int) int
+	f2        func(int, int) int
+	callbacks map[int]func(int)
 }
 
 // React implements the Reactor interface
-type React struct {
-}
-
-// CreateInput creates an input cell
-func (r *React) CreateInput(v int) InputCell {
-	return &Input{v, nil}
-}
-
-// CreateCompute1 creates a compute cell which computes its value ...
-func (r *React) CreateCompute1(c Cell, f func(int) int) ComputeCell {
-	in, ok := c.(*Input)
-	if !ok {
-		in = &Input{c.Value(), nil}
-	}
-
-	return &Compute{
-		i1:        in,
-		i2:        nil,
-		compute1:  f,
-		compute2:  nil,
-		callbacks: make([]func(int), 0),
-	}
-}
-
-// CreateCompute2 creates a compute cell which computes its value ...
-func (r *React) CreateCompute2(cell1, cell2 Cell, f func(int, int) int) ComputeCell {
-	in1, ok := cell1.(*Input)
-	if !ok {
-		in1 = &Input{cell1.Value(), nil}
-	}
-
-	in2, ok := cell2.(*Input)
-	if !ok {
-		in2 = &Input{cell2.Value(), nil}
-	}
-
-	return &Compute{
-		i1:        in1,
-		i2:        in2,
-		compute1:  nil,
-		compute2:  f,
-		callbacks: make([]func(int), 0),
-	}
-}
+type React struct{}
 
 // New creates a new reactor
 func New() *React {
 	return &React{}
+}
+
+// CreateInput is part of the Reactor interface
+func (r *React) CreateInput(v int) InputCell {
+	return &Node{v, nil, nil, nil, nil, nil}
+}
+
+// CreateCompute1 is part of the Reactor interface
+func (r *React) CreateCompute1(c Cell, f func(int) int) ComputeCell {
+	node := Node{f(c.Value()), c, nil, f, nil, nil}
+
+	// When value of the input changes, update the node's value
+	if n, ok := c.(*Node); ok {
+		n.AddCallback(func(int) {
+			node.SetValue(node.Value())
+		})
+	}
+
+	return &node
+}
+
+// CreateCompute2 is part of the Reactor interface
+func (r *React) CreateCompute2(c1, c2 Cell, f func(int, int) int) ComputeCell {
+	node := Node{f(c1.Value(), c2.Value()), c1, c2, nil, f, nil}
+
+	// When the value of the first input changes, update the node's value
+	if n1, ok := c1.(*Node); ok {
+		n1.AddCallback(func(int) {
+			node.SetValue(node.Value())
+		})
+	}
+
+	// When the value of the second input changes, update the node's value
+	if n2, ok := c2.(*Node); ok {
+		n2.AddCallback(func(int) {
+			node.SetValue(node.Value())
+		})
+	}
+
+	return &node
+}
+
+// Value is part of the Cell interface
+func (n *Node) Value() int {
+	if n.f1 != nil && n.c1 != nil {
+		return n.f1(n.c1.Value())
+	} else if n.f2 != nil && n.c1 != nil && n.c2 != nil {
+		return n.f2(n.c1.Value(), n.c2.Value())
+	}
+
+	return n.v
+}
+
+// SetValue is part of the InputCell interface
+func (n *Node) SetValue(v int) {
+	if v != n.v {
+		n.v = v
+
+		if n.callbacks != nil {
+			for _, f := range n.callbacks {
+				f(n.v)
+			}
+		}
+	}
+}
+
+// AddCallback is part of the ComputeCell interface
+func (n *Node) AddCallback(f func(int)) CallbackHandle {
+	if n.callbacks == nil {
+		n.callbacks = make(map[int]func(int))
+	}
+
+	handle := len(n.callbacks)
+	n.callbacks[handle] = f
+
+	return handle
+}
+
+// RemoveCallback is part of the ComputeCell interface
+func (n *Node) RemoveCallback(h CallbackHandle) {
+	if handle, ok := h.(int); ok {
+		if _, ok := n.callbacks[handle]; ok {
+			delete(n.callbacks, handle)
+		}
+	}
 }
