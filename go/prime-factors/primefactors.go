@@ -2,35 +2,29 @@ package prime
 
 const testVersion = 2
 
-// Factors returns the prime factors of in, in ascending order.
+// Factors returns the prime factors of q, in ascending order.
+// This is an iteration on doozr's submission:
+// http://exercism.io/submissions/ed668b42b10749528fea23296e32822e
 func Factors(q int64) []int64 {
 	factors := make([]int64, 0)
 
-	if q > 1 {
-		f := int64(2)
-
-		for q > 1 {
-			r := q % f
-
-			if r == 0 {
-				factors = append(factors, f)
-				q = q / f
-			} else {
-				f = next(f)
-			}
-		}
-	}
-
-	return factors
-}
-
-// Get the next prime factor
-func next(last int64) int64 {
-	// Other than 2 ...
-	if last == 2 {
-		return 3
+	// Two is the only even prime number
+	for q%2 == 0 {
+		q = q / 2
+		factors = append(factors, 2)
 	}
 
 	// Even numbers are not prime
-	return last + 2
+	for i := int64(3); i*i <= q; i += 2 {
+		for q%i == 0 {
+			q = q / i
+			factors = append(factors, i)
+		}
+	}
+
+	if q > 1 {
+		factors = append(factors, q)
+	}
+
+	return factors
 }
