@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Set the path to the perl executable.
-alias perl='/usr/bin/perl'
+alias perl='/usr/bin/env perl'
 
 # Exit with non-zero when an error occurs or an unset variable is evaluated.
 set -o errexit
@@ -94,4 +94,4 @@ then
 fi
 
 # Calls the main function passing all the arguments to it via '$@'
-main $@
+main "$@"
