@@ -1,3 +1,5 @@
+// Package tree restores hierarchical relationships between tree elements stored
+// with parental relationship information only.
 package tree
 
 import (
@@ -5,26 +7,35 @@ import (
 	"fmt"
 )
 
+// Record is an element of the hierarcy tree in a relational database.
 type Record struct {
 	ID, Parent int
 }
 
+// Node is an element of the hiearachy tree created by build.
 type Node struct {
 	ID       int
 	Children []*Node
 }
 
+// Mismatch has a purpose with which I am unfamiliar.
 type Mismatch struct{}
 
+// Error returns "c" regardless of the contents of m.
 func (m Mismatch) Error() string {
 	return "c"
 }
 
+// Build reconstitutes a tree hierarchy from a set of records
 func Build(records []Record) (*Node, error) {
 	if len(records) == 0 {
 		return nil, nil
 	}
+
+	// What is the reason for the map "dupe"
 	dupe := make(map[int]*Record)
+
+	// Looks like it is finding duplicate records.
 	for _, r := range records {
 		temp := dupe[r.ID]
 
@@ -37,9 +48,11 @@ func Build(records []Record) (*Node, error) {
 			return nil, fmt.Errorf("Node is a duplicate - {ID: %d, Parent: %d}", r.ID, r.Parent)
 		}
 	}
+
 	root := &Node{}
 	todo := []*Node{root}
 	n := 1
+
 	for {
 		if len(todo) == 0 {
 			break
@@ -94,12 +107,15 @@ func Build(records []Record) (*Node, error) {
 		}
 		todo = newTodo
 	}
+
 	if n != len(records) {
 		return nil, Mismatch{}
 	}
+
 	if err := chk(root, len(records)); err != nil {
 		return nil, err
 	}
+
 	return root, nil
 }
 
